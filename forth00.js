@@ -165,6 +165,7 @@ const convert = word => {
     // "0x10" -> 16
     // "0b00110001" -> 49
     // "32" -> 32
+    // Could be generalized with denotations, and so it would simplify strings
     if (word.startsWith("0x"))
         return parseInt(word.substring(2), 16);
     else if (word.startsWith("0b"))
@@ -392,7 +393,7 @@ DEF , HERE CELL ALLOT ! END
 
 DEF REGISTER
   CREATE ,
-  RETURN CELLS
+  RETURN @ CELLS
 END
 32 REGISTER STATE
 
@@ -543,32 +544,56 @@ DEF UNTIL COMPILE 0BRANCH , END IMMEDIATE
 DEF STAR 42 EMIT END
 STAR CR  # => *
 
+DEF ZERO? 0 = END
+
 DEF STARS
   BEGIN
     STAR
-  1 - DUP 0 = UNTIL
+  1 - DUP ZERO? UNTIL
   DROP
 END
 10 STARS CR
+
 
 1 1 = CONST TRUE
 0 1 = CONST FALSE
 TRUE PUTS
 
-CREATE TO-MESSAGE 0 ,  # VAR TO-MESSAGE 0 TO-MESSAGE ! but shorter
-DEF TO 1 TO-MESSAGE ! END
+
+CREATE TO-MESSAGE 1 ,  # VAR TO-MESSAGE 1 TO-MESSAGE ! but shorter
+                       # 0 = TO | 1 = FROM
+DEF TO 0 TO-MESSAGE ! END
 
 DEF VALUE
   CREATE ,
   RETURN
-    TO-MESSAGE @ 1 = IF ! ELSE @ THEN
-    0 TO-MESSAGE !
+    TO-MESSAGE @ ZERO? IF ! ELSE @ THEN
+    1 TO-MESSAGE !
 END
 
 12 VALUE APPLES
 APPLES PUTS
 34 TO APPLES
 APPLES PUTS
+
+
+# Deferred action
+DEF LITERAL STATE @ IF COMPILE LIT , THEN END IMMEDIATE
+DEF HELLO-LITERAL LITERAL 13 END
+HELLO-LITERAL PUTS
+LITERAL 14 PUTS
+
+
+DEF POSTPONE ' , END IMMEDIATE
+DEF { HERE 0 , POSTPONE ] END
+DEF } POSTPONE [ COMPILE EXIT END IMMEDIATE
+
+{ 2 3 * } EXECUTE PUTS
+
+# Alternative syntax to DEF
+{ 14 3 * } CONST ANSWER
+ANSWER EXECUTE PUTS
+
 
 BYE
 `;
