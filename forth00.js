@@ -17,7 +17,7 @@ const ds = [];
 const rs = [];
 
 // These methods may look redundant, but they are not. I am abstracting
-// Javascript semantics and defining an communication protocol/interface for
+// Javascript semantics and defining a communication protocol/interface for
 // stacks.
 const pushds = v => ds.push(v);
 const popds = () => ds.pop();
