@@ -11,4 +11,7 @@ END
 0 COUNTER AUTOPK
 AUTOPK PUTS  # => 1
 AUTOPK PUTS  # => 2
+
+DEF DIP SWAP >R EXECUTE R> END
+3 2 { 7 * } DIP PRINT SPACE PUTS  # => (in the order of print/puts) 2 3 7 * = 2 21
 ```
