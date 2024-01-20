@@ -545,6 +545,7 @@ DEF STAR 42 EMIT END
 STAR CR  # => *
 
 DEF ZERO? 0 = END
+DEF != = ZERO? END
 
 DEF STARS
   BEGIN
@@ -585,8 +586,15 @@ DEF HELLO-LITERAL LITERAL 13 END
 HELLO-LITERAL PUTS
 LITERAL 14 PUTS  # => 14
 
-
 DEF POSTPONE ' , END IMMEDIATE
+
+# These quotations don't work inside words and nested quotations, naturally. I
+# am at the level of a calculator that crunches numbers which a user types in.
+# Once an input prompt grows to multiple lines, we are talking about a
+# programming language that has memory and can communicate memories back to a
+# user. No interface--telepathy. I may introduce an additional execution stack
+# later or implement sections per
+# https://www.complang.tuwien.ac.at/anton/euroforth/ef16/papers/ertl-sections.pdf
 DEF { HERE 0 , POSTPONE ] END
 DEF } POSTPONE [ COMPILE EXIT END IMMEDIATE
 
@@ -595,6 +603,10 @@ DEF } POSTPONE [ COMPILE EXIT END IMMEDIATE
 # Alternative syntax to DEF
 { 14 3 * } CONST ANSWER
 ANSWER EXECUTE PUTS  # => 42
+
+HERE 0 , ] 4 * [ POSTPONE EXIT CONST MULT4
+5 MULT4 EXECUTE PUTS  # => 20
+
 
 # Like VALUE, but also EXECUTEs the token
 DEF DEFER
@@ -613,6 +625,43 @@ GREET PUTS  # => 98
 GREET PUTS  # => 99
 { 4 25 * } TO GREET
 GREET PUTS  # => 100
+
+
+DEF ROT >R SWAP R> SWAP END
+1 2 3 ROT PRINT SPACE PRINT SPACE PUTS  # => 1 3 2
+DEF -ROT ROT ROT END
+1 2 3 -ROT PRINT SPACE PRINT SPACE PUTS  # => 2 1 3
+
+# Stack manipulation words could be classified by a tuple { Action, Nth element
+# }. Some words like SWAP and ROT could be represented as dyadic functions: 1
+# SWAP 2 and 1 ROT 3, which is a more generic way of thinking about them.
+#
+# Op      | Action    | Element
+# --------+-----------+--------------------------
+# DROP    | discard   | top element
+# NIP     | discard   | second element
+# SWAP    | move      | second element to the top
+# ROT     | move      | third element to the top
+# DUP     | copy      | top element
+# OVER    | copy      | second element to the top
+
+# Combinators work the same way, except they also carry an additional EXECUTE
+# semantic. For example, a list of Factor-like combinators:
+
+DEF DIP SWAP >R EXECUTE R> END
+3 2 { 7 * } DIP PRINT SPACE PUTS  # => 2 3 7 * = 2 21
+
+DEF SIP OVER >R EXECUTE R> END
+3 2 { 7 * } SIP PRINT SPACE PRINT SPACE PUTS  # => 3 2 2 7 * = 3 2 14
+
+DEF BI >R SIP R> EXECUTE END
+12 { 3 * } { 4 * } BI PUTS PUTS  # => 12 4 * 12 3 * 48 36
+
+DEF BI* DIP DIP END
+2 4 { 3 * } { 5 * } BI* PRINT SPACE PUTS  # => 2 5 * 2 3 * = 20 6
+
+DEF BI@ DUP BI* END
+2 4 { 3 * } BI@ PRINT SPACE PUTS  # => 4 3 * 2 3 * = 12 6
 
 
 BYE
