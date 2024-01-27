@@ -14,4 +14,6 @@ AUTOPK PUTS  # => 2
 
 DEF DIP SWAP >R EXECUTE R> END
 3 2 { 7 * } DIP PRINT SPACE PUTS  # => (in the order of print/puts) 2 3 7 * = 2 21
+
+{ DUP PRINT SPACE } 5 TIMES CR  # => 5 4 3 2 1
 ```
