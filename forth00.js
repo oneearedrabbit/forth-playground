@@ -1,10 +1,10 @@
 // Architecture
 //
 // 32-bit virtual computer with CPU, RAM and two stacks
-const CELL = 4; // 32-bit architecture
-const HEAP_SIZE = 1024 * 1024 * CELL; // Size of VM
-const DATA_STACK_SIZE = 128 * CELL; // Size in bytes of data stack
-const RETURN_STACK_SIZE = 128 * CELL; // Size in bytes of return stack
+const CELL = 4;  // 32-bit architecture
+const HEAP_SIZE = 1024 * 1024 * CELL;  // Size of VM
+const DATA_STACK_SIZE = 128 * CELL;  // Size in bytes of data stack
+const RETURN_STACK_SIZE = 128 * CELL;  // Size in bytes of return stack
 
 // Implement interfaces to communicate with the architecture
 var heap = new ArrayBuffer(HEAP_SIZE);
@@ -19,39 +19,39 @@ const rs = [];
 // These methods may look redundant, but they are not. I am abstracting
 // Javascript semantics and defining a communication protocol/interface for
 // stacks.
-const pushds = (v) => ds.push(v);
+const pushds = v => ds.push(v);
 const popds = () => ds.pop();
-const pushrs = (v) => rs.push(v);
+const pushrs = v => rs.push(v);
 const poprs = () => rs.pop();
 
 // Registers
-const FORTH = 0x04; // Forth Vocabulary
-const CONTEXT = 0x19; // Current search vocabulary
-const CURRENT = 0x1b; // Current vocabulary
-const LATEST_CELL = 0x1c; // Last name in dictionary
-const HERE_CELL = 0x1d; // Next available cell
-const STATE = 0x20; // State of compiler
+const FORTH       = 0x04;  // Forth Vocabulary
+const CONTEXT     = 0x19;  // Current search vocabulary
+const CURRENT     = 0x1b;  // Current vocabulary
+const LATEST_CELL = 0x1c;  // Last name in dictionary
+const HERE_CELL   = 0x1d;  // Next available cell
+const STATE       = 0x20;  // State of compiler
 
 // Interpreter
 //
-const ALIGN_MASK = ~(CELL - 1); // Align value to a cell size
+const ALIGN_MASK = ~(CELL - 1);  // Align value to a cell size
 
-const F_IMMEDIATE = 0b10000000; // Immediate word
-const F_DATA = 0b01000000; // Data or code opcode
-const F_HIDDEN = 0b00100000; // Hidden word
-const F_LENMASK = 0b00011111; // Length mask
+const F_IMMEDIATE = 0b10000000;  // Immediate word
+const F_DATA      = 0b01000000;  // Data or code opcode
+const F_HIDDEN    = 0b00100000;  // Hidden word
+const F_LENMASK   = 0b00011111;  // Length mask
 
-const aligned = (addr) => (addr + CELL - 1) & ALIGN_MASK;
-const align = () => (i32[HERE_CELL] = aligned(i32[HERE_CELL]));
-const i32_comma = (val) => {
+const aligned = addr => addr + CELL - 1 & ALIGN_MASK;
+const align = () => i32[HERE_CELL] = aligned(i32[HERE_CELL]);
+const i32_comma = val => {
   i32[i32[HERE_CELL] >> 2] = val;
   i32[HERE_CELL] += CELL;
 };
-const u8_comma = (val) => {
+const u8_comma = val => {
   u8[i32[HERE_CELL]] = val;
   i32[HERE_CELL] += 1;
 };
-const buf_comma = (buf) => {
+const buf_comma = buf => {
   for (let char of buf) {
     u8_comma(char.charCodeAt(0));
   }
@@ -64,7 +64,7 @@ const create = (name, flags) => {
   // Name         | n bytes |
   //              | align   |
   // Definition   | m bytes |
-  // - codeword (1 cell for DOCOL, 2 cells for DOVAR and DORETURN--needs
+  // - codeword (1 cell for DOCOL, 2 cells for DOVAR and DORETURN: TODO needs
   //   unification) - CFA
   // - instructions - BODY
   const latest = i32[LATEST_CELL];
@@ -76,7 +76,7 @@ const create = (name, flags) => {
   align();
 };
 
-const table = {}; // Look up table for builtins; put simply, CPU intructions
+const table = {};  // Look up table for builtins; put simply, CPU intructions
 
 const defcode = (name, flags, fn) => {
   const op = Object.keys(table).length;
@@ -85,13 +85,13 @@ const defcode = (name, flags, fn) => {
   i32_comma(op);
 };
 
-const cfa = (addr) => {
+const cfa = addr => {
   const cell = u8[addr + CELL];
   const len = cell & F_LENMASK;
   return aligned(addr + 1 + len + CELL);
 };
 
-const find = (target) => {
+const find = target => {
   const n = target.length;
   for (let it = i32[i32[CONTEXT]]; it > 0; it = i32[it >> 2]) {
     const cell = u8[it + CELL];
@@ -129,7 +129,7 @@ const find = (target) => {
 //
 const is_delimiter = (char, delimiter) => char === delimiter || char === "\n" || char === undefined;
 
-const pad = (word) => {
+const pad = word => {
   const here = i32[HERE_CELL];
   for (let i = 0; i < word.length; i++) u8[here + i] = word[i].charCodeAt(0);
   return here;
@@ -164,7 +164,7 @@ const parse = (delimiter) => {
   return word;
 };
 
-const convert = (word) => {
+const convert = word => {
   // detect base and convert a number accordingly:
   // "0x10" -> 16
   // "0b00110001" -> 49
@@ -180,8 +180,7 @@ const convert = (word) => {
 i32[CURRENT] = FORTH;
 i32[CONTEXT] = FORTH;
 
-i32[HERE_CELL] = 0x23 * CELL; // This is the first empty slot in system
-// memory
+i32[HERE_CELL] = 0x23 * CELL; // This is the first empty slot in system memory
 i32[LATEST_CELL] = 0;
 i32[STATE] = 0; // Be explicit about the interpreter mode
 
@@ -192,9 +191,10 @@ const next1 = (np) => [i32[np >> 2], np + CELL];
 // DOCOL and DOVAR are special code words, not a subroutine. They execute
 // operation and continue, rather than execute a jump. 0 means that DOCOL must
 // be defined as the first defcode, DOVAR -- second, etc
-const OP_DOCOL = 0; // OP_DOCOL is identical to an uninitialized memory, and so
-// if a program manipulates with raw memory and has a bug,
-// it may enter an infinite loop.
+
+// OP_DOCOL is identical to an uninitialized memory, and so if a program
+// manipulates with raw memory and has a bug, it may enter an infinite loop.
+const OP_DOCOL = 0;
 const OP_DOVAR = 1;
 const OP_DORETURN = 2;
 
@@ -410,16 +410,15 @@ defcode("EVALUATE", 0, (ip, np) => {
   //                    NO)  Error! Handle error
 
   const word = parse(" ");
-  const addr = find(word); // find(word) could return cfa, but then I need
-  // >FLAGS method to identify whether a word is
-  // IMMEDIATE or not. Ironically, FIND word returns
-  // CFA.
+
+  // find(word) could return cfa, but then I need >FLAGS method to identify
+  // whether a word is IMMEDIATE or not. Ironically, FIND word returns CFA.
+  const addr = find(word);
   if (addr > 0) {
     const is_immediate = u8[addr + CELL] & F_IMMEDIATE;
     const is_compiling = i32[STATE];
-    if (is_compiling !== 0 && is_immediate === 0)
-      // compile a word
-      i32_comma(cfa(addr));
+    // compile a word
+    if (is_compiling !== 0 && is_immediate === 0) i32_comma(cfa(addr));
     // execute a word (aka jump to word's cfa)
     else return [cfa(addr), np];
   } else {
@@ -744,6 +743,8 @@ DEF BI@ DUP BI* END
 
 DEF 2DROP DROP DROP END
 
+# Repeat the quotation N times. Keeps the countdown counter on the top of the
+# stack.
 DEF TIMES
   BEGIN
     OVER EXECUTE
@@ -755,6 +756,86 @@ END
 
 { DUP PRINT SPACE } 5 TIMES CR  # => 5 4 3 2 1
 
+
+
+# Scalars and vectors
+DEF SHAPE @ END
+DEF DATA CELL+ @ END
+DEF FIRST DATA @ END
+
+CREATE [1] HERE , HERE CELL+ , 1 ,
+
+[1] PUTS  # => <addr>
+[1] SHAPE PUTS  # => shape of [1] is [1]
+[1] DATA PUTS  # => <addr+2 cells>
+[1] FIRST PUTS  # => 1
+
+DEFER SIZE
+{ SHAPE FIRST } TO SIZE
+
+
+DEF ROT >R SWAP R> SWAP END
+1 2 3 ROT PRINT SPACE PRINT SPACE PUTS  # => 1 3 2
+DEF -ROT ROT ROT END
+1 2 3 -ROT PRINT SPACE PRINT SPACE PUTS  # => 2 1 3
+
+DEF ARRAY2  HERE -ROT , , END
+
+HERE 0 , [1] ARRAY2 CONST [0]
+HERE 1 , [0] ARRAY2 CONST []
+
+[0] PUTS  # => <addr>
+[0] SHAPE PUTS  # => <the pointer to [1]>
+[0] FIRST PUTS  # => 0
+[0] SIZE PUTS  # => 1
+
+[] PUTS  # => <addr>
+[] SHAPE PUTS  # => pointer to [0]
+[] FIRST PUTS  # => 1
+[] SIZE PUTS  # => 0
+
+DEF SCALAR HERE SWAP , [] ARRAY2 END
+
+101 SCALAR CONST SCALAR1
+SCALAR1 SHAPE PUTS  # => pointer to []
+SCALAR1 FIRST PUTS  # => 101
+SCALAR1 SIZE PUTS  # => 1
+
+DEF VECTOR HERE SWAP ,  [1] ARRAY2 ARRAY2 END
+
+HERE 103 , 107 ,
+2 VECTOR CONST VECTOR1
+VECTOR1 SIZE PUTS  # => 2
+VECTOR1 FIRST PUTS  # => 103
+VECTOR1 DATA CELL+ @ PUTS  # => 107
+
+
+DEF NEW DUP HERE SWAP CELLS ALLOT SWAP END
+
+5 NEW VECTOR CONST VECTOR2
+VECTOR2 SIZE PUTS  # => 5
+VECTOR2 FIRST PUTS  # => <some value from an unassigned memory cell>
+
+109 VECTOR2 DATA !
+VECTOR2 FIRST PUTS  # => 109
+
+# This EACH implementation is very limited. It assumes that the quotation
+# consumes an element from data stack. Otherwise, the application could enter
+# the infinite loop. On top of that, it does redundant stack shuffling. If I had
+# local variables, the implementation could be simplified.
+DEF EACH
+  DUP -ROT SIZE  # vector xt size
+  BEGIN
+    >R OVER DATA
+    R> DUP >R 1 - CELLS + @
+    OVER EXECUTE R>
+  1 - DUP ZERO? UNTIL
+  2DROP
+END
+
+
+HERE 113 , 127 , 2 VECTOR CONST VECTOR3
+{ PRINT SPACE } VECTOR3 EACH CR  # => 127 113
 
 BYE
 `;
