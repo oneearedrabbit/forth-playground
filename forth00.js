@@ -138,7 +138,7 @@ const pad = word => {
 // Unclear if "HERE" CPU instruction would make it more interesting?
 // const here = () => i32[HERE_CELL];
 
-const parse = (delimiter) => {
+const parse = delimiter => {
   // Detect a word by reading from text buffer and return a word, otherwise -1
   let val = null;
   let char = null;
@@ -152,7 +152,6 @@ const parse = (delimiter) => {
   } while (is_delimiter(char, delimiter));
 
   // Read word until a delimiter
-  const here = i32[HERE_CELL];
   do {
     if (val.done === false) word += char;
     else return -1;
@@ -598,6 +597,9 @@ DEF ' BL PARSE FIND END
 
 DEF COMPILE R> DUP @ , CELL+ >R END  # A bit different implementation than in eForth
 
+# While IF/THEN/ELSE definitions are not very difficult to understand. I think,
+# I like the PostScript notation more, which uses quotations such as: bool { if
+# true } { if false } ifelse
 DEF IF COMPILE 0BRANCH HERE 0 , END IMMEDIATE
 DEF THEN HERE SWAP ! END IMMEDIATE
 DEF ELSE COMPILE BRANCH HERE 0 , SWAP HERE SWAP ! END IMMEDIATE
@@ -678,9 +680,12 @@ DEF } POSTPONE [ COMPILE EXIT END IMMEDIATE
 { 2 3 * } EXECUTE PUTS  # => 6
 
 # Alternative syntax to DEF
+#
+# In PostScript notation it may look like /ANSWER { 14 3 * } DEF
 { 14 3 * } CONST ANSWER
 ANSWER EXECUTE PUTS  # => 42
 
+# which expands to the following code
 HERE 0 , ] 4 * [ POSTPONE EXIT CONST MULT4
 5 MULT4 EXECUTE PUTS  # => 20
 
@@ -823,6 +828,7 @@ VECTOR2 FIRST PUTS  # => 109
 # consumes an element from data stack. Otherwise, the application could enter
 # the infinite loop. On top of that, it does redundant stack shuffling. If I had
 # local variables, the implementation could be simplified.
+DEF 3DROP 2DROP DROP END
 DEF EACH
   DUP -ROT SIZE  # vector xt size
   BEGIN
@@ -830,12 +836,22 @@ DEF EACH
     R> DUP >R 1 - CELLS + @
     OVER EXECUTE R>
   1 - DUP ZERO? UNTIL
-  2DROP
+  3DROP
 END
-
 
 HERE 113 , 127 , 2 VECTOR CONST VECTOR3
 { PRINT SPACE } VECTOR3 EACH CR  # => 127 113
+
+
+# Simple locals
+0 VALUE HELLO-NAME
+DEF HELLO
+  TO HELLO-NAME
+  HELLO-NAME PUTS
+END
+
+20 HELLO  # => 20
+
 
 BYE
 `;
