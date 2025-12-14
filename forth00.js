@@ -723,8 +723,8 @@ END IMMEDIATE
 
 { 2 3 * } EXECUTE PUTS  # => 6
 
-DEF Q1 { 2 4 * } END
-Q1 EXECUTE PUTS  # => 8
+DEF QUOTE { 2 4 * } END
+QUOTE EXECUTE PUTS  # => 8
 
 { { 2 5 * } EXECUTE 2 + } EXECUTE PUTS  # => 12
 

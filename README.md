@@ -2,7 +2,7 @@
 
 Forth experiments.
 
-forth00.js -- bootstrapping Forth. VARIABLE, ARRAY, CREATE/DOES>, IF, BEGIN, AGAIN, VALUE/DEFER, and stuff. Butchered, Ruby-like syntax:
+forth00.js -- bootstrapping Forth. VARIABLE, ARRAY, CREATE/DOES>, IF, BEGIN, AGAIN, VALUE/DEFER, and quotations. Butchered, Ruby-like syntax:
 ```
 DEF COUNTER
   CREATE ,
@@ -26,6 +26,6 @@ END
 HERE 113 , 127 , 2 VECTOR CONST VECTOR3
 { PRINT SPACE } VECTOR3 EACH CR  # => 127 113
 
-DEF Q1 { 2 4 * } END
-Q1 EXECUTE PUTS  # => 8
+DEF QUOTE { 2 4 * } END
+QUOTE EXECUTE PUTS  # => 8
 ```
