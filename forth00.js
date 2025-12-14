@@ -197,15 +197,15 @@ const OP_DOCOL = 0;
 const OP_DOVAR = 1;
 const OP_DORETURN = 2;
 
-defcode("DOCOL", 0, (ip, np) => {
+defcode("DOCOL", F_HIDDEN, (ip, np) => {
   pushrs(np);
   return next1(ip + CELL);
 });
-defcode("DOVAR", 0, (ip, np) => {
+defcode("DOVAR", F_HIDDEN, (ip, np) => {
   pushds(ip + 2 * CELL);
   return next1(np);
 });
-defcode("DORETURN", 0, (ip, np) => {
+defcode("DORETURN", F_HIDDEN, (ip, np) => {
   pushds(ip + 2 * CELL);
   pushrs(np);
   return next1(i32[(ip + CELL) >> 2]);
@@ -230,9 +230,20 @@ defcode("RETURN", 0, (ip, np) => {
   // replaces the execution semantics of the most recent definition (hence the
   // behavior is undefined if executed outside of CREATE) with the execution
   // semantics from RETURN and returns the execution
-  const addr = cfa(i32[LATEST_CELL]);
-  i32[addr >> 2] = OP_DORETURN;
-  i32[(addr + CELL) >> 2] = np;
+  if (rs.length === 0) throw new Error("RETURN is compile/colon-only (return stack empty)");
+
+  const latest = i32[LATEST_CELL]
+  if (latest === 0) throw new Error("RETURN with no latest word");
+
+  const xt = cfa(latest);
+  const cw = i32[xt >> 2];
+
+  if (cw !== OP_DOVAR) {
+    throw new Error("RETURN expects latest word to be CREATEd (codeword != DOVAR)");
+  }
+
+  i32[xt >> 2] = OP_DORETURN;
+  i32[(xt + CELL) >> 2] = np;
   return next1(poprs());
 });
 defcode("END", F_IMMEDIATE, (ip, np) => {
@@ -335,7 +346,7 @@ defcode("DUP", 0, (ip, np) => {
 defcode("BRANCH", 0, (ip, np) => next1(i32[np >> 2]));
 defcode("0BRANCH", 0, (ip, np) => {
   const val = popds();
-  if (val === false) return next1(i32[np >> 2]);
+  if (val === false || val === 0) return next1(i32[np >> 2]);
   else return next1(np + CELL);
 });
 defcode("=", 0, (ip, np) => {
@@ -667,17 +678,52 @@ LITERAL 14 PUTS  # => 14
 
 DEF POSTPONE ' , END IMMEDIATE
 
-# These quotations don't work inside words and nested quotations, naturally. I
-# am at the level of a calculator that crunches numbers which a user types in.
-# Once an input prompt grows to multiple lines, we are talking about a
-# programming language that has memory and can communicate memories back to a
-# user. No interface--it is telepathy. I may introduce an additional execution
-# stack later or implement sections per Ertl's paper:
-# https://www.complang.tuwien.ac.at/anton/euroforth/ef16/papers/ertl-sections.pdf
-DEF { HERE 0 , POSTPONE ] END
-DEF } POSTPONE [ COMPILE EXIT END IMMEDIATE
+# Quotations: { ... }  -> xt
+# Works at top-level and nested inside DEF.
+# Uses data stack as compile-time control stack.
+# Assumes DOCOL opcode index is 0
+DEF {
+  STATE @ IF
+    # compiling (nested quote):
+    # runtime: ( -- xt ) then skip body
+    COMPILE LIT
+    HERE DUP 0 , DROP      # litCell (patched to qStart by })
+    COMPILE BRANCH
+    HERE DUP 0 , DROP      # branchCell (patched to after by })
+    HERE DUP 0 , DROP      # qStart: emit DOCOL (assumes DOCOL = 0)
+    1                      # tag = nested
+  ELSE
+    # interpreting (top-level quote):
+    HERE DUP 0 , DROP      # xt; emit DOCOL
+    0                      # tag = top-level
+    POSTPONE ]             # enter compile mode for quote body
+  THEN
+END IMMEDIATE
+
+
+DEF }
+  COMPILE EXIT
+  HERE                    # after
+
+  SWAP ZERO? IF           # tag == 0? => top-level close
+    DROP                  # drop 'after', keep xt from '{' on stack
+    POSTPONE [            # back to interpret (execute [ at runtime of })
+  ELSE
+    # nested close: patch lit and branch
+    # stack: litCell branchCell qStart after
+    >R                    # save after
+    SWAP >R               # save branchCell (stack: litCell qStart  R: branchCell after)
+    SWAP !                # *litCell = qStart
+    R> R> SWAP !          # *branchCell = after
+  THEN
+END IMMEDIATE
 
 { 2 3 * } EXECUTE PUTS  # => 6
+
+DEF Q1 { 2 4 * } END
+Q1 EXECUTE PUTS  # => 8
+
+{ { 2 5 * } EXECUTE 2 + } EXECUTE PUTS  # => 12
 
 # Alternative syntax to DEF
 #
@@ -863,5 +909,10 @@ const $buffer = boot[Symbol.iterator]();
 // instruction will crash the interpreter.
 let [ip, np] = next1(start);
 do {
-  [ip, np] = table[i32[ip >> 2]](ip, np);
+  const op = i32[ip >> 2];
+  const fn = table[op];
+  if (typeof fn !== "function") {
+    throw new Error(`Invalid opcode ${op} at ip=${ip} (cell=${ip >> 2})`);
+  }
+  [ip, np] = fn(ip, np);
 } while (ip >= 0);
