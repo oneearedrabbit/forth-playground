@@ -197,10 +197,11 @@ const OP_DOCOL = 0;
 const OP_DOVAR = 1;
 const OP_DORETURN = 2;
 
-defcode("DOCOL", F_HIDDEN, (ip, np) => {
+defcode("DOCOL", 0, (ip, np) => {
   pushrs(np);
-  return next1(ip + CELL);
+  return next1(ip + 2 * CELL);  // DOCOL + reserved cell
 });
+
 defcode("DOVAR", F_HIDDEN, (ip, np) => {
   pushds(ip + 2 * CELL);
   return next1(np);
@@ -222,7 +223,8 @@ defcode("CREATE", 0, (ip, np) => {
 defcode("DEF", 0, (ip, np) => {
   const word = parse(" "); // white-space delimited words
   create(word, 0);
-  i32_comma(OP_DOCOL); // execution semantics: jump
+  i32_comma(OP_DOCOL);     // execution semantics: jump
+  i32_comma(0);            // reserved cell for consistency
   i32[STATE] = 1;
   return next1(np);
 });
@@ -600,9 +602,11 @@ DEF ' BL PARSE FIND END
 
 ' PUTS 8 CELLS DUMP  # => hux dump
 
+DEF >BODY 2 CELLS + END
+
 # Surely, I can change constants, where "2 CELL +" is >BODY
 1024 CONST 1K_DUP
-1025 ' 1K 2 CELLS + !
+1025 ' 1K >BODY !
 1K PUTS  # => 1025
 1K_DUP PUTS  # => 1024
 
@@ -681,40 +685,38 @@ DEF POSTPONE ' , END IMMEDIATE
 # Quotations: { ... }  -> xt
 # Works at top-level and nested inside DEF.
 # Uses data stack as compile-time control stack.
-# Assumes DOCOL opcode index is 0
 DEF {
   STATE @ IF
     # compiling (nested quote):
-    # runtime: ( -- xt ) then skip body
     COMPILE LIT
-    HERE DUP 0 , DROP      # litCell (patched to qStart by })
+    HERE DUP 0 , DROP          # litCell (patched to qStart by })
     COMPILE BRANCH
-    HERE DUP 0 , DROP      # branchCell (patched to after by })
-    HERE DUP 0 , DROP      # qStart: emit DOCOL (assumes DOCOL = 0)
-    1                      # tag = nested
+    HERE DUP 0 , DROP          # branchCell (patched to after by })
+    HERE DUP 0 , 0 , DROP      # qStart: DOCOL + reserved cell
+    1                          # tag = nested
   ELSE
     # interpreting (top-level quote):
-    HERE DUP 0 , DROP      # xt; emit DOCOL
-    0                      # tag = top-level
-    POSTPONE ]             # enter compile mode for quote body
+    HERE DUP 0 , 0 , DROP      # xt; emit DOCOL + reserved cell
+    0                          # tag = top-level
+    POSTPONE ]                 # enter compile mode for quote body
   THEN
 END IMMEDIATE
 
 
 DEF }
   COMPILE EXIT
-  HERE                    # after
+  HERE                        # after
 
-  SWAP ZERO? IF           # tag == 0? => top-level close
-    DROP                  # drop 'after', keep xt from '{' on stack
-    POSTPONE [            # back to interpret (execute [ at runtime of })
+  SWAP ZERO? IF               # tag == 0? => top-level close
+    DROP                      # drop 'after', keep xt from '{' on stack
+    POSTPONE [                # back to interpret
   ELSE
     # nested close: patch lit and branch
     # stack: litCell branchCell qStart after
-    >R                    # save after
-    SWAP >R               # save branchCell (stack: litCell qStart  R: branchCell after)
-    SWAP !                # *litCell = qStart
-    R> R> SWAP !          # *branchCell = after
+    >R                        # save after
+    SWAP >R                   # save branchCell (stack: litCell qStart  R: branchCell after)
+    SWAP !                    # *litCell = qStart
+    R> R> SWAP !              # *branchCell = after
   THEN
 END IMMEDIATE
 
@@ -732,7 +734,7 @@ Q1 EXECUTE PUTS  # => 8
 ANSWER EXECUTE PUTS  # => 42
 
 # which expands to the following code
-HERE 0 , ] 4 * [ POSTPONE EXIT CONST MULT4
+HERE 0 , 0 , ] 4 * [ POSTPONE EXIT CONST MULT4
 5 MULT4 EXECUTE PUTS  # => 20
 
 
