@@ -199,7 +199,7 @@ const OP_DORETURN = 2;
 
 defcode("DOCOL", 0, (ip, np) => {
   pushrs(np);
-  return next1(ip + 2 * CELL);  // DOCOL + reserved cell
+  return next1(ip + 2 * CELL);  // OP_DOCOL + reserved cell
 });
 
 defcode("DOVAR", F_HIDDEN, (ip, np) => {
@@ -688,6 +688,7 @@ DEF POSTPONE ' , END IMMEDIATE
 DEF {
   STATE @ IF
     # compiling (nested quote):
+    # runtime: ( -- xt ) then skip body
     COMPILE LIT
     HERE DUP 0 , DROP          # litCell (patched to qStart by })
     COMPILE BRANCH
