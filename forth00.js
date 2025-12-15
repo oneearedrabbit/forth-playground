@@ -686,7 +686,7 @@ DEF POSTPONE ' , END IMMEDIATE
 # Works at top-level and nested inside DEF.
 # Uses data stack as compile-time control stack.
 DEF {
-  STATE @ IF
+  STATE? IF
     # compiling (nested quote):
     # runtime: ( -- xt ) then skip body
     COMPILE LIT
